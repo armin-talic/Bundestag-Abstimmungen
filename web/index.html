@@ -121,6 +121,10 @@
      the narrow-screen breakpoint below) */
   .issue-row { display: flex; gap: 22px; flex-wrap: nowrap; }
   .issue-row > div { flex: 1 1 0; min-width: 0; }
+  /* reserve the same header height in both columns so the bars of the two
+     charts start on exactly the same line even when one subtitle wraps */
+  .issue-row .hb-title { min-height: 2.4em; margin-top: 24px; }
+  .issue-row .hb-sub { min-height: 3.2em; }
   .legend { font-size: 14.4px; }
   .footer-note { color: var(--muted); font-size: 14.4px; margin-top: 14px; line-height: 1.5; }
   .empty { color: var(--muted); font-size: 16.8px; padding: 20px 0; }
@@ -585,7 +589,30 @@ function drawStackedBars(parties) {
 function drawHemicycle(poll, plain) {
   const seats = poll.seats;
   const n = seats.length;
-  const W = 940, H = 590, cx = W / 2, cy = H - 52, R = 430;
+  const W = 940, H = 590, cx = W / 2, cy = H - 52;
+
+  // The party legend is laid out FIRST, because with many fractions it wraps
+  // onto a second row and the arc has to start below it rather than under it.
+  const counts = d3.rollup(seats, v => v.length, s => s.party);
+  const present = DATA.seating_order.filter(p => counts.has(p));
+  const legFs = 28.8, legRowH = 38, legMaxW = W - 30;
+  const legItems = present.map(p => {
+    const label = `${p} (${pct1(counts.get(p) / n)})`;
+    return { party: p, label, w: 26 + label.length * legFs * 0.52 + 26 };
+  });
+  const legRows = [[]];
+  let legRowW = 0;
+  legItems.forEach(it => {
+    if (legRowW + it.w > legMaxW && legRows[legRows.length - 1].length) {
+      legRows.push([]); legRowW = 0;
+    }
+    legRows[legRows.length - 1].push(it);
+    legRowW += it.w;
+  });
+  const legBottom = 28 + legRows.length * legRowH;
+  // leave room for the shape legend too when a single vote is shown
+  const topOffset = legBottom + (plain ? 8 : 40);
+  const R = cy - topOffset;
 
   const nRows = Math.max(9, Math.round(Math.sqrt(n / 4.3)));
   const rowR = d3.range(nRows).map(i => 0.45 + (0.55 * i) / (nRows - 1));
@@ -639,42 +666,49 @@ function drawHemicycle(poll, plain) {
     .attr("text-anchor", "middle").attr("font-size", 22.8).attr("font-weight", 700)
     .text(`${fmtN(n)} Abgeordnete`);
 
-  const counts = d3.rollup(seats, v => v.length, s => s.party);
-  const present = DATA.seating_order.filter(p => counts.has(p));
-  // legend text at double size (24px) so it stays readable at 70% width
-  const labels = present.map(p => `${p} (${pct1(counts.get(p) / n)})`);
-  const widths = labels.map(l => 30 + l.length * 12.6 + 26);
-  const lg = svg.append("g").attr("class", "legend")
-    .attr("transform", `translate(${cx - d3.sum(widths) / 2}, 26)`);
-  let lx = 0;
-  present.forEach((p, i) => {
-    lg.append("circle").attr("cx", lx + 10).attr("cy", -8).attr("r", 10).attr("fill", COLORS[p]);
-    lg.append("text").attr("x", lx + 26).attr("y", 0).attr("font-size", 28.8)
-      .text(labels[i]).append("title").text(`${p}: ${fmtN(counts.get(p))} von ${fmtN(n)} Sitzen`);
-    lx += widths[i];
+  // draw the party legend rows computed at the top of this function
+  legRows.forEach((row, ri) => {
+    const total = d3.sum(row, d => d.w);
+    const lg = svg.append("g").attr("class", "legend")
+      .attr("transform", `translate(${cx - total / 2}, ${28 + ri * legRowH})`);
+    let lx = 0;
+    row.forEach(it => {
+      lg.append("circle").attr("cx", lx + 11).attr("cy", -9).attr("r", 10)
+        .attr("fill", COLORS[it.party]);
+      lg.append("text").attr("x", lx + 28).attr("y", 0).attr("font-size", legFs)
+        .text(it.label).append("title")
+        .text(`${it.party}: ${fmtN(counts.get(it.party))} von ${fmtN(n)} Sitzen`);
+      lx += it.w;
+    });
   });
 
   if (!plain) {
+    // shape legend, centred and placed under the party legend (which may
+    // itself run over more than one row)
+    const vFs = 16.8;
+    const vItems = [["Ja", "yes"], ["Nein", "no"], ["Enthaltung", "abstain"],
+                    ["Nicht abgegeben", "no_show"]]
+      .map(([label, kind]) => ({ label, kind, w: 14 + label.length * vFs * 0.5 + 26 }));
+    const vTotal = d3.sum(vItems, d => d.w);
     const vl = svg.append("g").attr("class", "legend")
-      .attr("transform", `translate(${cx - 210}, 40)`);
+      .attr("transform", `translate(${cx - vTotal / 2}, ${legBottom + 6})`);
     let vx = 0;
-    [["Ja", "yes"], ["Nein", "no"], ["Enthaltung", "abstain"],
-     ["Nicht abgegeben", "no_show"]].forEach(([label, kind]) => {
+    vItems.forEach(({ label, kind }, i) => {
       if (kind === "no") {
-        const d = 5;
+        const d = 6;
         vl.append("path")
-          .attr("d", `M${vx - d},${-4 - d}L${vx + d},${-4 + d}M${vx - d},${-4 + d}L${vx + d},${-4 - d}`)
-          .attr("stroke", "#555").attr("stroke-width", 2).attr("fill", "none");
+          .attr("d", `M${vx - d},${-5 - d}L${vx + d},${-5 + d}M${vx - d},${-5 + d}L${vx + d},${-5 - d}`)
+          .attr("stroke", "#555").attr("stroke-width", 2.2).attr("fill", "none");
       } else if (kind === "no_show") {
-        vl.append("circle").attr("cx", vx).attr("cy", -4).attr("r", 5.5)
-          .attr("fill", "none").attr("stroke", "#555").attr("stroke-width", 1.8);
+        vl.append("circle").attr("cx", vx).attr("cy", -5).attr("r", 6.5)
+          .attr("fill", "none").attr("stroke", "#555").attr("stroke-width", 1.9);
       } else {
-        vl.append("circle").attr("cx", vx).attr("cy", -4).attr("r", 5.5)
+        vl.append("circle").attr("cx", vx).attr("cy", -5).attr("r", 6.5)
           .attr("fill", "#555").attr("opacity", kind === "abstain" ? 0.35 : 1);
       }
-      vl.append("text").attr("x", vx + 10).attr("y", 0).attr("font-size", 14.4)
+      vl.append("text").attr("x", vx + 12).attr("y", 0).attr("font-size", vFs)
         .attr("fill", "#444").text(label);
-      vx += 10 + label.length * 6.3 + 22;
+      vx += vItems[i].w;
     });
   }
 }
