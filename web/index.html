@@ -1,0 +1,1124 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bundestag Abstimmungs</title>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="data.js?v=11"></script>
+<style>
+  :root {
+    --border: #e2e2e2;
+    --muted: #777;
+    --green: #1a7a2e;
+    --red: #b3261e;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Segoe UI", system-ui, sans-serif;
+    margin: 0; color: #1a1a1a; background: #fafafa;
+  }
+  header { padding: 18px 26px 0; border-bottom: 1px solid var(--border); background: #fff; }
+  header h1 { margin: 0 0 3px; font-size: 38px; text-align: center; }
+  header p { margin: 0 0 10px; color: var(--muted); font-size: 13px; text-align: center; }
+  .tabs { display: flex; gap: 26px; justify-content: center; }
+  .tabs button {
+    padding: 8px 2px 9px; font-size: 14px; border: none; background: none;
+    cursor: pointer; color: var(--muted);
+    border-bottom: 2.5px solid transparent; margin-bottom: -1px;
+  }
+  .tabs button:hover { color: #1a1a1a; }
+  .tabs button.active { color: #1a1a1a; font-weight: 600; border-bottom-color: #1a1a1a; }
+
+  .layout { display: flex; min-height: calc(100vh - 108px); align-items: flex-start; }
+  .layout[hidden] { display: none; }
+  aside {
+    width: 300px; flex: none; background: #fff; padding: 14px;
+    overflow-y: auto; position: sticky; top: 0; max-height: calc(100vh - 108px);
+  }
+  aside.left  { order: 1; border-right: 1px solid var(--border); }
+  aside.right { order: 3; border-left: 1px solid var(--border); }
+  main { flex: 1 1 auto; order: 2; padding: 18px 26px 24px; min-width: 0; }
+
+  .filters { display: flex; gap: 8px; margin-bottom: 10px; }
+  .filters > div { flex: 1; min-width: 0; }
+  label {
+    font-size: 13.2px; color: var(--muted); display: block;
+    margin: 9px 0 2px;
+  }
+  aside .side-heading + label, aside label:first-child { margin-top: 0; }
+  select, input[type=text] {
+    width: 100%; padding: 5px 6px; font-size: 15.6px;
+    border: 1px solid var(--border); border-radius: 6px; background: #fff;
+  }
+  .count { font-size: 14.4px; color: var(--muted); margin: 8px 0 0; }
+  .side-section { margin-bottom: 18px; }
+  .side-heading {
+    font-size: 13.2px; letter-spacing: .05em; text-transform: uppercase;
+    color: var(--muted); font-weight: 600; margin: 0 0 8px;
+  }
+  .poll-item {
+    padding: 7px 9px; border: 1px solid var(--border); border-radius: 8px;
+    margin-bottom: 6px; cursor: pointer; background: #fff;
+  }
+  .poll-item:hover { border-color: #999; }
+  .poll-item.active { border-color: #1a1a1a; background: #f1f1f1; }
+  .poll-item .d { font-size: 13.2px; color: var(--muted); }
+  .poll-item .t { font-size: 15.6px; font-weight: 600; line-height: 1.25; }
+
+  /* Erfolgsquote je Partei keeps its own compact sidebar sizing */
+  .cov-row { margin-bottom: 9px; font-size: 14.4px; }
+  .cov-label { display: flex; justify-content: space-between; color: #444; gap: 8px; }
+  .cov-bar { height: 6px; background: #ececec; border-radius: 999px; overflow: hidden; margin-top: 3px; }
+  .cov-fill { height: 100%; border-radius: 999px; }
+  .cov-note { color: var(--muted); font-size: 13.8px; line-height: 1.5; margin: 0 0 10px; }
+
+  /* everything above the seat map is centred against it */
+  #chart-title { font-size: 21.6px; font-weight: 700; margin: 0 0 2px; text-align: center; }
+  #chart-subtitle { font-size: 15.6px; color: var(--muted); margin: 0 0 4px; text-align: center; }
+  #chart-result { font-size: 15.6px; color: #444; margin: 0 0 10px; text-align: center; }
+  .title-date { font-weight: 400; color: var(--muted); font-size: 18px; margin-left: 8px; }
+  .more-info {
+    font-size: 15.6px; font-weight: 600; color: #14508c;
+    margin-left: 10px; white-space: nowrap;
+  }
+  .more-info:hover { text-decoration: underline; }
+  .accepted { color: var(--green); font-weight: 600; }
+  .rejected { color: var(--red); font-weight: 600; }
+
+  svg { max-width: 100%; height: auto; }
+  /* seat map 30% smaller, Sitzverteilung 20% smaller, both centred */
+  #chart-seatmap { margin: 6px 0 4px; }
+  #chart-seatmap svg { max-width: 70%; display: block; margin: 0 auto; }
+  #chart-seatshare svg { max-width: 80%; display: block; margin: 0 auto; }
+  #chart-bars svg { max-width: 80%; display: block; margin: 0 auto; }
+
+  .mode-toggle { display: flex; gap: 6px; margin: 16px 0 4px; justify-content: center; }
+  .mode-toggle button {
+    padding: 4px 12px; font-size: 15px; border: 1px solid var(--border);
+    border-radius: 999px; background: #fff; cursor: pointer; color: #444;
+  }
+  .mode-toggle button.active { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
+  .mode-caption {
+    font-size: 14.4px; color: var(--muted); text-align: center; margin: 0 0 8px;
+  }
+
+  /* one shared size for every chart heading and caption */
+  .hb-title { font-size: 15.6px; font-weight: 700; margin: 24px 0 2px; }
+  .hb-sub { font-size: 14.4px; color: var(--muted); margin-bottom: 8px; }
+  /* the two issue rankings sit side by side */
+  .issue-row { display: flex; gap: 24px; flex-wrap: wrap; }
+  .issue-row > div { flex: 1 1 420px; min-width: 0; }
+  .legend { font-size: 14.4px; }
+  .footer-note { color: var(--muted); font-size: 14.4px; margin-top: 14px; line-height: 1.5; }
+  .empty { color: var(--muted); font-size: 16.8px; padding: 20px 0; }
+  .party-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; }
+
+  .tooltip {
+    position: fixed; pointer-events: none; background: #1a1a1a; color: #fff;
+    font-size: 14.4px; padding: 7px 9px; border-radius: 6px; opacity: 0; z-index: 10;
+    line-height: 1.45;
+  }
+  .tooltip table { border-collapse: collapse; }
+  .tooltip td { padding: 0; }
+
+  @media (max-width: 1100px) {
+    #chart-seatmap svg, #chart-seatshare svg, #chart-bars svg { max-width: 100%; }
+  }
+  @media (max-width: 900px) {
+    .layout { flex-direction: column; }
+    aside, aside.left, aside.right {
+      width: auto; border-right: none; border-left: none;
+      border-top: 1px solid var(--border);
+      position: static; max-height: none;
+    }
+    aside.right { order: 2; }
+    main { order: 3; padding: 14px 16px; }
+    header { padding: 12px 14px 0; }
+    header h1 { font-size: 26px; }
+    .tabs { gap: 14px; flex-wrap: wrap; }
+  }
+  @media (max-width: 560px) {
+    header h1 { font-size: 21px; }
+    .tabs button { font-size: 13px; padding: 7px 1px 8px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Bundestag Abstimmungs</h1>
+  <p>Namentliche Abstimmungen · Einzelstimmen der Abgeordneten · Daten: abgeordnetenwatch.de API v2 (CC0)</p>
+  <nav class="tabs">
+    <button id="tab-votes" class="active">Abstimmungen</button>
+    <button id="tab-partei">Partei</button>
+  </nav>
+</header>
+
+<!-- ========================= ABSTIMMUNGEN ============================ -->
+<div class="layout" id="view-votes">
+  <aside class="left">
+    <div class="side-section">
+      <p class="side-heading">Filter</p>
+      <label for="leg-filter">Wahlperiode</label>
+      <select id="leg-filter"></select>
+      <label for="topic-filter">Thema</label>
+      <select id="topic-filter"></select>
+      <label for="result-filter">Ergebnis</label>
+      <select id="result-filter"></select>
+    </div>
+    <div class="side-section" id="votes-success"></div>
+  </aside>
+  <main>
+    <div id="chart-title"></div>
+    <p id="chart-subtitle"></p>
+    <p id="chart-result"></p>
+    <div id="chart-seatmap"></div>
+    <div id="chart-seatshare"></div>
+    <div class="mode-toggle" id="bars-mode">
+      <button id="mode-total" class="active">Ja-Stimmen gesamt</button>
+      <button id="mode-pct">Anteil Ja</button>
+    </div>
+    <p class="mode-caption" id="bars-caption"></p>
+    <div id="chart-bars"></div>
+    <div class="issue-row">
+      <div id="chart-issues-most"></div>
+      <div id="chart-issues-least"></div>
+    </div>
+  </main>
+  <aside class="right">
+    <p class="side-heading">Abstimmung</p>
+    <div id="issue-list"></div>
+    <p class="count" id="poll-count"></p>
+  </aside>
+</div>
+
+<!-- ============================= PARTEI ============================== -->
+<div class="layout" id="view-partei" hidden>
+  <aside class="left">
+    <div class="side-section">
+      <p class="side-heading">Filter</p>
+      <label for="pt-leg">Wahlperiode</label>
+      <select id="pt-leg"></select>
+      <label for="pt-topic">Thema</label>
+      <select id="pt-topic"></select>
+      <label for="pt-result">Ergebnis</label>
+      <select id="pt-result"></select>
+    </div>
+    <div class="side-section" id="pt-success"></div>
+  </aside>
+  <main>
+    <div id="pt-title" style="font-size:21.6px;font-weight:700;margin:0 0 2px">
+      Abstimmungsverhalten nach Partei</div>
+    <p id="pt-subtitle" style="font-size:15.6px;color:var(--muted);margin:0 0 12px"></p>
+    <div id="pt-chart"></div>
+    <div id="pt-extra"></div>
+    <p class="footer-note">
+      Jede Zeile fasst alle Einzelstimmen der Abgeordneten einer Fraktion über die
+      gefilterten Abstimmungen zusammen, als Anteil aller Mandate der Fraktion.
+      Mit der Maus über einen Balken fahren zeigt die genauen Zahlen.
+    </p>
+  </main>
+  <aside class="right">
+    <p class="side-heading">Abstimmung</p>
+    <div id="pt-list"></div>
+    <p class="count" id="pt-count"></p>
+  </aside>
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+
+<script>
+const DATA = window.VOTE_DATA;
+// seats ship packed as [partyIdx, voteIdx, nameIdx] to keep data.js small
+if (DATA.polls.length && DATA.polls[0].seats_packed) {
+  DATA.polls.forEach(p => {
+    p.seats = p.seats_packed.map(([pi, vi, ni]) => ({
+      party: DATA.seating_order[pi],
+      vote: DATA.vote_order[vi],
+      name: DATA.name_table[ni]
+    }));
+    delete p.seats_packed;
+  });
+}
+const COLORS = DATA.party_colors;
+const VOTE_LABELS = { yes: "Ja", no: "Nein", abstain: "Enthaltung", no_show: "Nicht abgegeben" };
+const pct = d3.format(".0%");
+const pct1 = d3.format(".1%");
+const fmtN = n => n.toLocaleString("de-DE");
+
+const MONTHS_DE = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli",
+                   "August", "September", "Oktober", "November", "Dezember"];
+function fmtDate(iso) {
+  const [y, m, d] = iso.split("-").map(Number);
+  return `${d}. ${MONTHS_DE[m - 1]} ${y}`;
+}
+
+// ---- tooltip -----------------------------------------------------------
+
+const tooltip = d3.select("#tooltip");
+function showTip(event, html) {
+  tooltip.style("opacity", 1).html(html);
+  const r = tooltip.node().getBoundingClientRect();
+  let left = event.clientX + 14, top = event.clientY + 14;
+  if (left + r.width > window.innerWidth - 8) left = event.clientX - r.width - 14;
+  if (top + r.height > window.innerHeight - 8) top = event.clientY - r.height - 14;
+  tooltip.style("left", left + "px").style("top", top + "px");
+}
+function hideTip() { tooltip.style("opacity", 0); }
+
+// ---- tabs --------------------------------------------------------------
+
+function setTab(which) {
+  d3.select("#tab-votes").classed("active", which === "votes");
+  d3.select("#tab-partei").classed("active", which === "partei");
+  document.getElementById("view-votes").hidden = which !== "votes";
+  document.getElementById("view-partei").hidden = which !== "partei";
+  hideTip();
+}
+d3.select("#tab-votes").on("click", () => setTab("votes"));
+d3.select("#tab-partei").on("click", () => setTab("partei"));
+
+// ---- shared setup ------------------------------------------------------
+
+const topics = [...new Set(DATA.polls.flatMap(p => p.topics))].sort();
+const legislatures = [...new Set(DATA.polls.map(p => p.legislature))].sort().reverse();
+const CURRENT_LEG = legislatures[0];
+const legLabel = l => l === "all" ? "Alle Wahlperioden" : l.replace("Bundestag ", "");
+const RESULT_OPTIONS = [
+  { value: "all", label: "Alle Ergebnisse" },
+  { value: "passed", label: "angenommen" },
+  { value: "rejected", label: "abgelehnt" }
+];
+
+function fillSelect(sel, values, labelFn, onChange) {
+  d3.select(sel)
+    .on("change", function () { onChange(this.value); })
+    .selectAll("option")
+    .data(values)
+    .join("option")
+    .attr("value", d => d.value ?? d)
+    .text(d => labelFn(d));
+}
+
+// index every MP once: name -> their vote records (drives seat tooltips)
+const PEOPLE = new Map();
+DATA.polls.forEach(poll => {
+  poll.seats.forEach(s => {
+    if (!PEOPLE.has(s.name)) PEOPLE.set(s.name, { name: s.name, records: [] });
+    PEOPLE.get(s.name).records.push({ poll, vote: s.vote, party: s.party });
+  });
+});
+
+// a party's stance on one poll: the side its majority of cast votes took
+function partyStance(pp) {
+  if (pp.yes > pp.no) return "yes";
+  if (pp.no > pp.yes) return "no";
+  return "split";
+}
+
+function successRows(polls) {
+  const stats = new Map();
+  polls.forEach(p => p.parties.forEach(pp => {
+    if (pp.party === "Fraktionslos") return;
+    if (pp.yes + pp.no + pp.abstain < 5) return;
+    const st = partyStance(pp);
+    if (st === "split") return;
+    const s = stats.get(pp.party) || { wins: 0, total: 0 };
+    s.total++;
+    if ((st === "yes" && p.accepted) || (st === "no" && !p.accepted)) s.wins++;
+    stats.set(pp.party, s);
+  }));
+  return [...stats.entries()]
+    .map(([party, s]) => ({ party, rate: s.wins / s.total, ...s }))
+    .sort((a, b) => b.rate - a.rate);
+}
+
+function successBlockHtml(polls) {
+  const rows = successRows(polls);
+  if (!rows.length) return "";
+  return `<p class="side-heading">Erfolgsquote je Partei</p>
+    <p class="cov-note">Anteil der gefilterten Abstimmungen, bei denen das Ergebnis
+      der Mehrheitsposition der Fraktion entsprach</p>` +
+    rows.map(r => `
+    <div class="cov-row">
+      <div class="cov-label">
+        <span><span class="party-dot" style="background:${COLORS[r.party]}"></span>${r.party}</span>
+        <span><b>${pct(r.rate)}</b> · ${r.wins}/${r.total}</span></div>
+      <div class="cov-bar"><div class="cov-fill"
+        style="width:${r.rate * 100}%;background:${COLORS[r.party]}"></div></div>
+    </div>`).join("");
+}
+
+// sum party tallies over a set of polls
+function aggregateParties(polls) {
+  const agg = new Map();
+  polls.forEach(p => p.parties.forEach(pp => {
+    const a = agg.get(pp.party) ||
+      { party: pp.party, yes: 0, no: 0, abstain: 0, no_show: 0 };
+    a.yes += pp.yes; a.no += pp.no; a.abstain += pp.abstain; a.no_show += pp.no_show;
+    agg.set(pp.party, a);
+  }));
+  return [...agg.values()];
+}
+
+function resultLine(parties) {
+  const sum = k => d3.sum(parties, p => p[k]);
+  const cast = sum("yes") + sum("no") + sum("abstain");
+  return ["yes", "no", "abstain", "no_show"]
+    .map(k => [k, sum(k)])
+    .filter(([, v]) => v)
+    .map(([k, v]) => k === "no_show"
+      ? `${VOTE_LABELS[k]} ${fmtN(v)}`
+      : `${VOTE_LABELS[k]} ${fmtN(v)} (${pct1(v / cast)})`)
+    .join(" &nbsp;·&nbsp; ");
+}
+
+// white text on dark party colours, dark text on light ones
+function contrastText(hex) {
+  const c = d3.color(hex);
+  return (0.299 * c.r + 0.587 * c.g + 0.114 * c.b) / 255 > 0.6 ? "#1a1a1a" : "#fff";
+}
+
+/* ====================================================================== *
+ *  ABSTIMMUNGEN                                                          *
+ * ====================================================================== */
+
+const state = { legislature: CURRENT_LEG, topic: "all", result: "all",
+                pollId: "all", barMode: "total" };
+
+fillSelect("#leg-filter", ["all", ...legislatures], legLabel,
+  v => { state.legislature = v; refreshList(true); });
+d3.select("#leg-filter").property("value", CURRENT_LEG);
+
+fillSelect("#topic-filter", ["all", ...topics],
+  d => d === "all" ? "Alle Themen" : d,
+  v => { state.topic = v; refreshList(true); });
+
+fillSelect("#result-filter", RESULT_OPTIONS, d => d.label,
+  v => { state.result = v; refreshList(true); });
+
+function setBarMode(mode) {
+  state.barMode = mode;
+  d3.select("#mode-total").classed("active", mode === "total");
+  d3.select("#mode-pct").classed("active", mode === "pct");
+  render();
+}
+d3.select("#mode-total").on("click", () => setBarMode("total"));
+d3.select("#mode-pct").on("click", () => setBarMode("pct"));
+
+function filteredPolls() {
+  return DATA.polls.filter(p =>
+    (state.legislature === "all" || p.legislature === state.legislature) &&
+    (state.topic === "all" || p.topics.includes(state.topic)) &&
+    (state.result === "all" ||
+      (state.result === "passed" ? p.accepted : !p.accepted))
+  ).sort((a, b) => b.date.localeCompare(a.date));
+}
+
+function refreshList(resetSelection) {
+  const polls = filteredPolls();
+  d3.select("#poll-count").text(
+    `${fmtN(polls.length)} Abstimmung${polls.length === 1 ? "" : "en"} im Filter`);
+  d3.select("#votes-success").html(successBlockHtml(polls));
+
+  if (resetSelection ||
+      (state.pollId !== "all" && !polls.some(p => p.id === state.pollId))) {
+    state.pollId = "all";
+  }
+
+  const list = d3.select("#issue-list");
+  list.selectAll("*").remove();
+  list.append("div")
+    .attr("class", "poll-item" + (state.pollId === "all" ? " active" : ""))
+    .on("click", () => { state.pollId = "all"; refreshList(false); })
+    .html(`<div class="t">Alle Abstimmungen (Gesamt)</div>`);
+  polls.forEach(d => {
+    list.append("div")
+      .attr("class", "poll-item" + (d.id === state.pollId ? " active" : ""))
+      .on("click", () => { state.pollId = d.id; refreshList(false); })
+      .html(`
+        <div class="d">${d.date} · ${d.topics.join(", ")}</div>
+        <div class="t ${d.accepted ? "accepted" : "rejected"}">${d.title_de}</div>`);
+  });
+  render();
+}
+
+function render() {
+  ["#chart-bars", "#chart-seatmap", "#chart-seatshare",
+   "#chart-issues-most", "#chart-issues-least"]
+    .forEach(s => d3.select(s).selectAll("*").remove());
+
+  const polls = filteredPolls();
+  const single = state.pollId === "all"
+    ? null : DATA.polls.find(p => p.id === state.pollId);
+
+  if (!polls.length && !single) {
+    d3.select("#chart-title").text("Keine Abstimmung entspricht dem Filter");
+    d3.select("#chart-subtitle").text("");
+    d3.select("#chart-result").text("");
+    d3.select("#bars-caption").text("");
+    return;
+  }
+
+  if (!single) {
+    // Gesamtansicht: das Parlament selbst, alle Abgeordneten als Punkte
+    const passed = polls.filter(p => p.accepted).length;
+    d3.select("#chart-title").text(
+      (state.legislature === "all" ? "Bundestag · alle Wahlperioden"
+                                   : "Bundestag " + legLabel(state.legislature)) +
+      ` · ${fmtN(polls.length)} namentliche Abstimmung${polls.length === 1 ? "" : "en"}`);
+    d3.select("#chart-subtitle").text(
+      "Aktuelle Zusammensetzung des Plenums · rechts eine Abstimmung wählen für eine Einzelansicht");
+    d3.select("#chart-result").html(
+      `<span class="accepted">angenommen ${passed} (${pct1(passed / polls.length)})</span>` +
+      ` &nbsp;·&nbsp; <span class="rejected">abgelehnt ${polls.length - passed} ` +
+      `(${pct1((polls.length - passed) / polls.length)})</span>`);
+    drawHemicycle(polls[0], true);
+    drawSeatShare(polls[0]);
+    drawStackedBars(aggregateParties(polls));
+    drawIssueConsensus(polls);
+    return;
+  }
+
+  d3.select("#chart-title").html(
+    `<span class="${single.accepted ? "accepted" : "rejected"}">${single.title_de}</span>` +
+    `<span class="title-date">(${fmtDate(single.date)})</span>` +
+    (single.url
+      ? `<a class="more-info" href="${single.url}" target="_blank" rel="noopener">Mehr Infos</a>`
+      : "") +
+    (single.drucksache
+      ? `<a class="more-info" href="${single.drucksache}" target="_blank" rel="noopener">Drucksache (PDF)</a>`
+      : ""));
+  d3.select("#chart-subtitle").text(single.intro || "");
+  d3.select("#chart-result").html(resultLine(single.parties));
+  drawHemicycle(single, false);
+  drawSeatShare(single);
+  drawStackedBars(single.parties);
+}
+
+// ---- Ja-Balken je Fraktion ---------------------------------------------
+
+function drawStackedBars(parties) {
+  const rows = parties
+    .filter(p => p.party !== "Fraktionslos")
+    .map(p => {
+      const cast = p.yes + p.no + p.abstain;
+      return { ...p, cast, total: cast + p.no_show, share: cast ? p.yes / cast : 0 };
+    })
+    .filter(p => p.cast >= 5)
+    .sort((a, b) => b.yes - a.yes);
+  if (!rows.length) { d3.select("#bars-caption").text(""); return; }
+
+  const totalMode = state.barMode === "total";
+  d3.select("#bars-caption").text(totalMode
+    ? "Balken = Zahl der Ja-Stimmen · Nein, Enthaltung und nicht abgegeben im Tooltip"
+    : "Balken = Anteil Ja an den abgegebenen Stimmen · Nein, Enthaltung und nicht abgegeben im Tooltip");
+
+  const W = 940, H = 230, m = { top: 22, right: 20, bottom: 52, left: 52 };
+  const iw = W - m.left - m.right, ih = H - m.top - m.bottom;
+  const svg = d3.select("#chart-bars").append("svg").attr("viewBox", `0 0 ${W} ${H}`);
+  const g = svg.append("g").attr("transform", `translate(${m.left},${m.top})`);
+  const x = d3.scaleBand().domain(rows.map(r => r.party)).range([0, iw]).padding(0.3);
+  const yMax = totalMode ? d3.max(rows, r => r.yes) || 1 : 1;
+  const y = d3.scaleLinear().domain([0, yMax]).range([ih, 0]);
+  const barValue = r => totalMode ? r.yes : r.share;
+  const barLabel = r => totalMode ? fmtN(r.yes) : pct1(r.share);
+
+  g.append("g").call(d3.axisLeft(y).tickValues([0, yMax])
+      .tickFormat(totalMode ? d3.format("d") : pct).tickSize(-iw))
+    .call(a => a.selectAll(".tick line").attr("stroke", "#e8e8e8"))
+    .call(a => a.selectAll("text").attr("font-size", 14.4))
+    .call(a => a.select(".domain").remove());
+  g.append("g").attr("transform", `translate(0,${ih})`)
+    .call(d3.axisBottom(x).tickSize(0))
+    .call(a => a.select(".domain").remove())
+    .selectAll("text").attr("font-size", 14.4).attr("dy", "1.15em");
+
+  function partyTip(r) {
+    const lines = ["yes", "no", "abstain"].map(k =>
+      `<tr><td>${VOTE_LABELS[k]}</td>` +
+      `<td style="text-align:right;padding-left:12px">${pct1(r[k] / r.cast)}</td>` +
+      `<td style="text-align:right;padding-left:8px;opacity:.65">${fmtN(r[k])}</td></tr>`).join("");
+    return `<b>${r.party}</b><table style="margin-top:3px">${lines}` +
+      `<tr><td colspan="3" style="border-top:1px solid #555;padding-top:3px">` +
+      `abgegebene Stimmen: ${fmtN(r.cast)}</td></tr>` +
+      `<tr><td colspan="3" style="opacity:.65">nicht abgegeben: ${fmtN(r.no_show)}` +
+      ` (von ${fmtN(r.total)} Mandaten)</td></tr></table>`;
+  }
+
+  rows.forEach(r => {
+    g.append("rect")
+      .attr("x", x(r.party)).attr("width", x.bandwidth())
+      .attr("y", y(barValue(r))).attr("height", ih - y(barValue(r)))
+      .attr("fill", COLORS[r.party]).attr("pointer-events", "none");
+    g.append("text")
+      .attr("x", x(r.party) + x.bandwidth() / 2)
+      .attr("y", y(barValue(r)) - 6)
+      .attr("text-anchor", "middle").attr("font-size", 14.4).attr("font-weight", 700)
+      .text(barLabel(r));
+    g.append("rect")
+      .attr("x", x(r.party)).attr("width", x.bandwidth())
+      .attr("y", 0).attr("height", ih)
+      .attr("fill", "transparent")
+      .on("mousemove", ev => showTip(ev, partyTip(r)))
+      .on("mouseout", hideTip);
+  });
+}
+
+// ---- Sitzplan ----------------------------------------------------------
+
+function drawHemicycle(poll, plain) {
+  const seats = poll.seats;
+  const n = seats.length;
+  const W = 940, H = 590, cx = W / 2, cy = H - 52, R = 430;
+
+  const nRows = Math.max(9, Math.round(Math.sqrt(n / 4.3)));
+  const rowR = d3.range(nRows).map(i => 0.45 + (0.55 * i) / (nRows - 1));
+  const sumR = d3.sum(rowR);
+  const raw = rowR.map(r => (r / sumR) * n);
+  const rowSeats = raw.map(Math.floor);
+  const shortBy = n - d3.sum(rowSeats);
+  raw.map((v, i) => [v - Math.floor(v), i])
+     .sort((a, b) => b[0] - a[0]).slice(0, shortBy)
+     .forEach(([, i]) => rowSeats[i]++);
+
+  const pos = [];
+  rowSeats.forEach((k, i) => {
+    for (let j = 0; j < k; j++) {
+      pos.push({ theta: Math.PI * (1 - (j + 0.5) / k), r: rowR[i] });
+    }
+  });
+  pos.sort((a, b) => b.theta - a.theta || a.r - b.r);
+
+  const dotR = Math.min(7, (R * 0.55) / nRows / 2.6);
+  const svg = d3.select("#chart-seatmap").append("svg").attr("viewBox", `0 0 ${W} ${H}`);
+  const g = svg.append("g");
+  const winner = poll.accepted ? "yes" : "no";
+
+  seats.forEach((s, i) => {
+    const { theta, r } = pos[i];
+    const px = cx + R * r * Math.cos(theta);
+    const py = cy - R * r * Math.sin(theta);
+    const c = COLORS[s.party];
+    let el;
+    if (plain) {
+      el = g.append("circle").attr("cx", px).attr("cy", py).attr("r", dotR).attr("fill", c);
+    } else if (s.vote === "no") {
+      const d = dotR * 0.85;
+      el = g.append("path")
+        .attr("d", `M${px - d},${py - d}L${px + d},${py + d}M${px - d},${py + d}L${px + d},${py - d}`)
+        .attr("stroke", c).attr("stroke-width", 2.1).attr("fill", "none");
+    } else {
+      el = g.append("circle").attr("cx", px).attr("cy", py).attr("r", dotR);
+      if (s.vote === "yes" || s.vote === "abstain") el.attr("fill", c);
+      else el.attr("fill", "none").attr("stroke", c).attr("stroke-width", 1.8);
+    }
+    if (!plain && s.vote !== winner) el.attr("opacity", 0.22);
+    g.append("circle").attr("cx", px).attr("cy", py).attr("r", dotR + 1)
+      .attr("fill", "transparent")
+      .on("mousemove", ev => showTip(ev, mpTip(s, plain)))
+      .on("mouseout", hideTip);
+  });
+
+  svg.append("text").attr("x", cx).attr("y", cy - 18)
+    .attr("text-anchor", "middle").attr("font-size", 22.8).attr("font-weight", 700)
+    .text(`${fmtN(n)} Abgeordnete`);
+
+  const counts = d3.rollup(seats, v => v.length, s => s.party);
+  const present = DATA.seating_order.filter(p => counts.has(p));
+  // legend text at double size (24px) so it stays readable at 70% width
+  const labels = present.map(p => `${p} (${pct1(counts.get(p) / n)})`);
+  const widths = labels.map(l => 30 + l.length * 12.6 + 26);
+  const lg = svg.append("g").attr("class", "legend")
+    .attr("transform", `translate(${cx - d3.sum(widths) / 2}, 26)`);
+  let lx = 0;
+  present.forEach((p, i) => {
+    lg.append("circle").attr("cx", lx + 10).attr("cy", -8).attr("r", 10).attr("fill", COLORS[p]);
+    lg.append("text").attr("x", lx + 26).attr("y", 0).attr("font-size", 28.8)
+      .text(labels[i]).append("title").text(`${p}: ${fmtN(counts.get(p))} von ${fmtN(n)} Sitzen`);
+    lx += widths[i];
+  });
+
+  if (!plain) {
+    const vl = svg.append("g").attr("class", "legend")
+      .attr("transform", `translate(${cx - 210}, 40)`);
+    let vx = 0;
+    [["Ja", "yes"], ["Nein", "no"], ["Enthaltung", "abstain"],
+     ["Nicht abgegeben", "no_show"]].forEach(([label, kind]) => {
+      if (kind === "no") {
+        const d = 5;
+        vl.append("path")
+          .attr("d", `M${vx - d},${-4 - d}L${vx + d},${-4 + d}M${vx - d},${-4 + d}L${vx + d},${-4 - d}`)
+          .attr("stroke", "#555").attr("stroke-width", 2).attr("fill", "none");
+      } else if (kind === "no_show") {
+        vl.append("circle").attr("cx", vx).attr("cy", -4).attr("r", 5.5)
+          .attr("fill", "none").attr("stroke", "#555").attr("stroke-width", 1.8);
+      } else {
+        vl.append("circle").attr("cx", vx).attr("cy", -4).attr("r", 5.5)
+          .attr("fill", "#555").attr("opacity", kind === "abstain" ? 0.35 : 1);
+      }
+      vl.append("text").attr("x", vx + 10).attr("y", 0).attr("font-size", 14.4)
+        .attr("fill", "#444").text(label);
+      vx += 10 + label.length * 6.3 + 22;
+    });
+  }
+}
+
+function mpTip(seat, plain) {
+  const person = PEOPLE.get(seat.name);
+  let head = `<b>${seat.name}</b><br>${seat.party}`;
+  if (!plain) head += ` · ${VOTE_LABELS[seat.vote]}`;
+  if (!person) return head;
+  const c = { yes: 0, no: 0, abstain: 0, no_show: 0 };
+  person.records.forEach(r => c[r.vote]++);
+  const total = person.records.length;
+  const seg = (k, col) => c[k]
+    ? `<div style="width:${(c[k] / total) * 150}px;background:${col}"></div>` : "";
+  const row = (k, label, col) => c[k]
+    ? `<tr><td><span style="display:inline-block;width:8px;height:8px;background:${col}"></span>
+         ${label}</td>
+       <td style="text-align:right;padding-left:10px">${fmtN(c[k])}</td>
+       <td style="text-align:right;padding-left:6px;opacity:.7">${pct(c[k] / total)}</td></tr>` : "";
+  return head +
+    `<div style="margin-top:5px;font-size:13.2px;opacity:.8">` +
+    `${fmtN(total)} namentliche Abstimmung${total === 1 ? "" : "en"} insgesamt</div>` +
+    `<div style="display:flex;height:8px;width:150px;margin:4px 0;border-radius:2px;overflow:hidden">` +
+      seg("yes", "#1a7a2e") + seg("no", "#b3261e") +
+      seg("abstain", "#009EE0") + seg("no_show", "#b5b5b5") +
+    `</div><table style="font-size:13.2px">` +
+      row("yes", "Ja", "#1a7a2e") + row("no", "Nein", "#b3261e") +
+      row("abstain", "Enthaltung", "#009EE0") +
+      row("no_show", "Nicht abg.", "#b5b5b5") +
+    `</table>`;
+}
+
+// ---- Sitzverteilung ----------------------------------------------------
+
+function drawSeatShare(poll) {
+  const total = poll.seats.length;
+  const counts = d3.rollups(poll.seats, v => v.length, s => s.party)
+    .map(([party, n]) => ({ party, n, share: n / total }))
+    .sort((a, b) => b.n - a.n);
+  if (!counts.length) return;
+
+  const W = 940, H = 78, m = { top: 30, right: 20, left: 52 };
+  const iw = W - m.left - m.right, barH = 30;
+  const svg = d3.select("#chart-seatshare").append("svg").attr("viewBox", `0 0 ${W} ${H}`);
+  svg.append("text").attr("x", W / 2).attr("y", 17).attr("text-anchor", "middle")
+    .attr("font-size", 15.6).attr("font-weight", 700)
+    .text(`Sitzverteilung · ${fmtN(total)} Abgeordnete`);
+
+  const g = svg.append("g").attr("transform", `translate(${m.left},${m.top})`);
+  let acc = 0;
+  counts.forEach(c => {
+    const x0 = (acc / total) * iw, w = c.share * iw;
+    g.append("rect").attr("x", x0).attr("y", 0).attr("width", w).attr("height", barH)
+      .attr("fill", COLORS[c.party] || "#9E9E9E")
+      .attr("stroke", "#fff").attr("stroke-width", 1)
+      .on("mousemove", ev => showTip(ev,
+        `<b>${c.party}</b><br>${fmtN(c.n)} Sitze · ${pct1(c.share)} der Sitze`))
+      .on("mouseout", hideTip);
+    if (w > 30) {
+      g.append("text").attr("x", x0 + w / 2).attr("y", barH / 2 + 4)
+        .attr("text-anchor", "middle").attr("font-size", 14.4).attr("font-weight", 700)
+        .attr("fill", contrastText(COLORS[c.party] || "#9E9E9E"))
+        .attr("pointer-events", "none").text(fmtN(c.n));
+    }
+    acc += c.n;
+  });
+}
+
+// ---- generischer horizontaler Balken-Block -----------------------------
+
+function wrapLabel(text, chars, lines) {
+  const words = text.split(/\s+/);
+  const out = [];
+  let cur = "";
+  for (const w of words) {
+    if (!cur.length) cur = w;
+    else if ((cur + " " + w).length <= chars) cur += " " + w;
+    else { out.push(cur); cur = w; if (out.length === lines) break; }
+  }
+  if (out.length < lines && cur.length) out.push(cur);
+  if (out.length === lines) {
+    const used = out.join(" ").length;
+    if (used < text.length - 1) out[lines - 1] = out[lines - 1].replace(/.$/, "") + "…";
+  }
+  return out;
+}
+
+function hBarChart(container, cfg) {
+  const el = d3.select(container);
+  el.append("div").attr("class", "hb-title").text(cfg.title);
+  if (cfg.subtitle) el.append("div").attr("class", "hb-sub").text(cfg.subtitle);
+  const W = cfg.width ?? 940;
+  const labelLines = cfg.labelLines ?? 1;
+  const rowH = cfg.rowH ?? (labelLines > 1 ? 40 : 26);
+  const gap = cfg.gap ?? 10;
+  const labelW = cfg.labelW ?? 200;
+  const valueW = cfg.valueW ?? 120;
+  const iw = Math.max(W - labelW - valueW, 40);
+  const svg = el.append("svg")
+    .attr("viewBox", `0 0 ${W} ${Math.max(cfg.rows.length * (rowH + gap), 1)}`);
+  const xMax = cfg.xMax ?? (d3.max(cfg.rows, r => r.value) || 1);
+  const charW = 6.1;
+  cfg.rows.forEach((r, i) => {
+    const y = i * (rowH + gap);
+    const maxChars = Math.floor((labelW - 12) / charW);
+    const lines = labelLines > 1
+      ? wrapLabel(r.label, maxChars, labelLines)
+      : [r.label.length > maxChars ? r.label.slice(0, maxChars - 1) + "…" : r.label];
+    const startY = y + rowH / 2 + 4 - ((lines.length - 1) * 13) / 2;
+    const t = svg.append("text").attr("x", labelW - 10)
+      .attr("text-anchor", "end").attr("font-size", 14.4).attr("font-weight", 600);
+    lines.forEach((ln, k) => t.append("tspan").attr("x", labelW - 10)
+      .attr("y", startY + k * 13).text(ln));
+    t.append("title").text(r.label);
+    const w = Math.max((r.value / xMax) * iw, 0);
+    const rect = svg.append("rect").attr("x", labelW).attr("y", y)
+      .attr("width", w).attr("height", rowH).attr("fill", r.color);
+    if (r.tip) rect.on("mousemove", ev => showTip(ev, r.tip)).on("mouseout", hideTip);
+    const vt = svg.append("text").attr("x", labelW + w + 8).attr("y", y + rowH / 2 + 4)
+      .attr("font-size", 14.4).attr("font-weight", 700).text(r.valueLabel);
+    if (r.tip) vt.on("mousemove", ev => showTip(ev, r.tip)).on("mouseout", hideTip);
+  });
+}
+
+// ---- einigste und umstrittenste Abstimmungen ---------------------------
+
+function issueConsensusRows(polls, mode) {
+  const rows = polls.map(p => {
+    const t = { yes: 0, no: 0, abstain: 0 };
+    p.parties.forEach(pp => { t.yes += pp.yes; t.no += pp.no; t.abstain += pp.abstain; });
+    const cast = t.yes + t.no + t.abstain;
+    if (!cast) return null;
+    const top = Math.max(t.yes, t.no, t.abstain);
+    const winning = top === t.yes ? "Ja" : top === t.no ? "Nein" : "Enthaltung";
+    return { poll: p, cast, ...t, consensus: top / cast, winning,
+             margin: Math.abs(t.yes - t.no) / Math.max(t.yes + t.no, 1) };
+  }).filter(Boolean);
+  return mode === "most"
+    ? rows.sort((a, b) => b.consensus - a.consensus).slice(0, 5)
+    : rows.filter(r => r.yes + r.no > 0).sort((a, b) => a.margin - b.margin).slice(0, 5);
+}
+
+function partyAlignment(poll, winning) {
+  const key = { Ja: "yes", Nein: "no", Enthaltung: "abstain" }[winning] ?? "yes";
+  return poll.parties
+    .filter(pp => pp.party !== "Fraktionslos" && pp.yes + pp.no + pp.abstain > 0)
+    .map(pp => {
+      const cast = pp.yes + pp.no + pp.abstain;
+      return { party: pp.party, share: pp[key] / cast, yes: pp.yes, no: pp.no };
+    })
+    .sort((a, b) => a.share - b.share);
+}
+
+function alignmentTip(poll, winning, headExtra) {
+  const rows = partyAlignment(poll, winning);   // every fraction, none dropped
+  if (!rows.length) return `<b>${poll.title_de}</b>`;
+  const outcome = poll.accepted
+    ? `<span style="color:#7ee08f;font-weight:600">angenommen</span>`
+    : `<span style="color:#ff8b82;font-weight:600">abgelehnt</span>`;
+  const list = rows.map(r =>
+    `<tr><td><span class="party-dot" style="background:${COLORS[r.party]}"></span>${r.party}</td>` +
+    `<td style="text-align:right;padding-left:12px">${pct(r.share)}</td>` +
+    `<td style="text-align:right;padding-left:8px;opacity:.7">` +
+    `(${fmtN(r.yes)} Ja, ${fmtN(r.no)} Nein)</td></tr>`).join("");
+  return `<b>${poll.title_de}</b> ${outcome}` +
+    `<br><span style="opacity:.75">${headExtra}</span>` +
+    `<div style="margin-top:5px;font-size:13.2px;opacity:.8">` +
+    `Geringste Zustimmung zu "${winning}" zuerst:</div>` +
+    `<table style="font-size:13.8px;margin-top:2px">${list}</table>`;
+}
+
+function drawIssueConsensus(polls) {
+  const most = issueConsensusRows(polls, "most");
+  const least = issueConsensusRows(polls, "least");
+  // side by side, so each gets a narrower canvas
+  const common = { width: 620, labelW: 250, labelLines: 2, rowH: 42, valueW: 140 };
+  if (most.length) {
+    hBarChart("#chart-issues-most", {
+      ...common,
+      title: "Abstimmungen mit der höchsten Einigkeit",
+      subtitle: "Top 5 · Maus über den Balken zeigt, welche Fraktion am wenigsten mitging",
+      xMax: 1,
+      rows: most.map(r => ({
+        label: r.poll.title_de, value: r.consensus, color: "#1a7a2e",
+        valueLabel: `${r.winning} ${pct1(r.consensus)}`,
+        tip: alignmentTip(r.poll, r.winning,
+          `${r.winning} ${fmtN(Math.round(r.consensus * r.cast))} von ${fmtN(r.cast)} abgegebenen ` +
+          `(${pct1(r.consensus)})`)
+      }))
+    });
+  }
+  if (least.length) {
+    hBarChart("#chart-issues-least", {
+      ...common,
+      title: "Die umstrittensten Abstimmungen",
+      subtitle: "Top 5 · kleinster Abstand zwischen Ja und Nein",
+      xMax: d3.max(least, r => r.margin) || 1,
+      rows: least.map(r => ({
+        label: r.poll.title_de, value: r.margin, color: "#b3261e",
+        valueLabel: `${pct1(r.margin)} Abstand`,
+        tip: alignmentTip(r.poll, r.yes >= r.no ? "Ja" : "Nein",
+          `Ja ${fmtN(r.yes)} · Nein ${fmtN(r.no)} · Abstand ${pct1(r.margin)}`)
+      }))
+    });
+  }
+}
+
+/* ====================================================================== *
+ *  PARTEI                                                                *
+ * ====================================================================== */
+
+const ptState = { legislature: CURRENT_LEG, topic: "all", result: "all", pollId: "all" };
+
+fillSelect("#pt-leg", ["all", ...legislatures], legLabel,
+  v => { ptState.legislature = v; renderPartei(); });
+d3.select("#pt-leg").property("value", CURRENT_LEG);
+fillSelect("#pt-topic", ["all", ...topics],
+  d => d === "all" ? "Alle Themen" : d,
+  v => { ptState.topic = v; renderPartei(); });
+fillSelect("#pt-result", RESULT_OPTIONS, d => d.label,
+  v => { ptState.result = v; renderPartei(); });
+
+function ptFilteredPolls() {
+  return DATA.polls.filter(p =>
+    (ptState.legislature === "all" || p.legislature === ptState.legislature) &&
+    (ptState.topic === "all" || p.topics.includes(ptState.topic)) &&
+    (ptState.result === "all" ||
+      (ptState.result === "passed" ? p.accepted : !p.accepted)))
+    .sort((a, b) => b.date.localeCompare(a.date));
+}
+
+const PT_FILL = { yes: "#1a7a2e", no: "#b3261e", abstain: "#009EE0", no_show: "#b5b5b5" };
+const PT_TEXT = { yes: "#fff", no: "#fff", abstain: "#fff", no_show: "#1a1a1a" };
+const PT_ORDER = ["yes", "no", "abstain", "no_show"];
+
+function renderPartei() {
+  const basePolls = ptFilteredPolls();
+  if (ptState.pollId !== "all" && !basePolls.some(p => p.id === ptState.pollId)) {
+    ptState.pollId = "all";
+  }
+
+  const list = d3.select("#pt-list");
+  list.selectAll("*").remove();
+  list.append("div")
+    .attr("class", "poll-item" + (ptState.pollId === "all" ? " active" : ""))
+    .on("click", () => { ptState.pollId = "all"; renderPartei(); })
+    .html(`<div class="t">Alle Abstimmungen (Gesamt)</div>`);
+  basePolls.forEach(p => {
+    list.append("div")
+      .attr("class", "poll-item" + (p.id === ptState.pollId ? " active" : ""))
+      .on("click", () => { ptState.pollId = p.id; renderPartei(); })
+      .html(`
+        <div class="d">${p.date} · ${p.topics.join(", ")}</div>
+        <div class="t ${p.accepted ? "accepted" : "rejected"}">${p.title_de}</div>`);
+  });
+
+  const single = ptState.pollId === "all"
+    ? null : basePolls.find(p => p.id === ptState.pollId);
+  const polls = single ? [single] : basePolls;
+
+  d3.select("#pt-count").text(
+    `${fmtN(polls.length)} Abstimmung${polls.length === 1 ? "" : "en"} ausgewertet`);
+  d3.select("#pt-subtitle").text(single
+    ? `${single.title_de} (${fmtDate(single.date)})`
+    : `Alle Einzelstimmen der Fraktionen über ${fmtN(polls.length)} ` +
+      `namentliche Abstimmung${polls.length === 1 ? "" : "en"} im Filter`);
+
+  const el = d3.select("#pt-chart");
+  el.selectAll("*").remove();
+  d3.select("#pt-extra").selectAll("*").remove();
+  d3.select("#pt-success").html("");
+  if (!polls.length) {
+    el.append("p").attr("class", "empty").text("Keine Abstimmung entspricht dem Filter");
+    return;
+  }
+
+  const rows = aggregateParties(polls)
+    .filter(a => a.party !== "Fraktionslos")
+    .map(a => ({ ...a, cast: a.yes + a.no + a.abstain }))
+    .filter(a => a.cast > 0)
+    .sort((a, b) => b.cast - a.cast);
+
+  const rowH = 34, gap = 14, labelW = 110, rightW = 120;
+  const W = 940, headerH = 30, H = headerH + rows.length * (rowH + gap);
+  const iw = W - labelW - rightW;
+  const svg = el.append("svg").attr("viewBox", `0 0 ${W} ${H}`);
+
+  let lx = labelW;
+  [["yes", "Ja"], ["no", "Nein"], ["abstain", "Enthaltung"],
+   ["no_show", "Nicht abgegeben"]].forEach(([k, label]) => {
+    svg.append("rect").attr("x", lx).attr("y", 2).attr("width", 12).attr("height", 12)
+      .attr("fill", PT_FILL[k]);
+    svg.append("text").attr("x", lx + 17).attr("y", 12).attr("font-size", 14.4).text(label);
+    lx += 17 + label.length * 6.6 + 20;
+  });
+  svg.append("text").attr("x", lx + 2).attr("y", 12)
+    .attr("font-size", 14.4).attr("fill", "#888")
+    .text("je 100% aller Mandate der Fraktion");
+
+  rows.forEach((r, i) => {
+    const yPos = headerH + i * (rowH + gap);
+    const total = r.cast + r.no_show;
+    svg.append("circle").attr("cx", 10).attr("cy", yPos + rowH / 2).attr("r", 6)
+      .attr("fill", COLORS[r.party] || "#9E9E9E");
+    svg.append("text").attr("x", 22).attr("y", yPos + rowH / 2 + 4)
+      .attr("font-size", 15.6).attr("font-weight", 600).text(r.party);
+
+    const tip = k =>
+      `<b>${r.party} · ${VOTE_LABELS[k]}</b><br>` +
+      `${fmtN(r[k])} · ${pct1(r[k] / total)} aller Mandate<br>` +
+      `<span style="opacity:.65">abgegeben ${fmtN(r.cast)} · ` +
+      `nicht abgegeben ${fmtN(r.no_show)} (${fmtN(total)} Mandate insgesamt)</span>`;
+
+    let acc = 0;
+    PT_ORDER.forEach(k => {
+      const frac = r[k] / total, x0 = labelW + acc * iw, w = frac * iw;
+      if (w > 0) {
+        svg.append("rect").attr("x", x0).attr("y", yPos)
+          .attr("width", w).attr("height", rowH)
+          .attr("fill", PT_FILL[k]).attr("stroke", "#fff").attr("stroke-width", 1)
+          .on("mousemove", ev => showTip(ev, tip(k))).on("mouseout", hideTip);
+        if (w > 52) {
+          svg.append("text").attr("x", x0 + w / 2).attr("y", yPos + rowH / 2 + 4)
+            .attr("text-anchor", "middle").attr("font-size", 14.4)
+            .attr("font-weight", 700).attr("fill", PT_TEXT[k])
+            .attr("pointer-events", "none").text(pct1(frac));
+        }
+      }
+      acc += frac;
+    });
+
+    svg.append("text").attr("x", labelW + iw + 10).attr("y", yPos + rowH / 2 + 4)
+      .attr("font-size", 14.4).attr("fill", "#666")
+      .text(`${fmtN(r.cast)} Stimmen`);
+  });
+
+  d3.select("#pt-success").html(successBlockHtml(polls));
+  drawAgreementPairs(polls, "#pt-extra");
+}
+
+// ---- Fraktions-Übereinstimmung (Venn) ----------------------------------
+
+function drawAgreementPairs(polls, container) {
+  const maj = new Map();
+  polls.forEach(p => p.parties.forEach(pp => {
+    if (pp.party === "Fraktionslos") return;
+    if (pp.yes + pp.no + pp.abstain < 5) return;
+    const top = d3.greatest([["yes", pp.yes], ["no", pp.no], ["abstain", pp.abstain]],
+                            d => d[1])[0];
+    if (!maj.has(pp.party)) maj.set(pp.party, new Map());
+    maj.get(pp.party).set(p.id, top);
+  }));
+  const parties = [...maj.keys()];
+  const pairs = [];
+  for (let i = 0; i < parties.length; i++) {
+    for (let j = i + 1; j < parties.length; j++) {
+      const a = maj.get(parties[i]), b = maj.get(parties[j]);
+      let shared = 0, agreed = 0;
+      a.forEach((v, id) => { if (b.has(id)) { shared++; if (b.get(id) === v) agreed++; } });
+      // a single Abstimmung is still worth showing: the pair either landed
+      // on the same side or it did not
+      if (shared >= (polls.length === 1 ? 1 : 3)) {
+        pairs.push({ p1: parties[i], p2: parties[j], shared, agreed,
+                     rate: agreed / shared });
+      }
+    }
+  }
+  if (!pairs.length) return;
+  pairs.sort((a, b) => b.rate - a.rate);
+
+  const el = d3.select(container);
+  el.append("div").attr("class", "hb-title").text("Fraktions-Übereinstimmung");
+  el.append("div").attr("class", "hb-sub")
+    .text(polls.length === 1
+      ? `Welche Fraktionen bei dieser Abstimmung dieselbe Mehrheitsposition hatten · ` +
+        `${pairs.length} Paare`
+      : `Anteil gemeinsamer Mehrheitsentscheidungen je Fraktionspaar, höchste zuerst · ` +
+        `${pairs.length} Paare · Klick zeigt die Abstimmungen`);
+
+  const cols = 5, cw = 188, chh = 132;
+  const rowsN = Math.ceil(pairs.length / cols);
+  const lastRowCount = pairs.length % cols || cols;
+  const svg = el.append("svg").attr("viewBox", `0 0 ${cols * cw} ${rowsN * chh}`);
+  pairs.forEach((pr, i) => {
+    const row = Math.floor(i / cols), col = i % cols;
+    const rowOffset = row === rowsN - 1 ? ((cols - lastRowCount) * cw) / 2 : 0;
+    const g = svg.append("g")
+      .attr("transform", `translate(${col * cw + rowOffset},${row * chh})`);
+    g.append("text").attr("x", cw / 2).attr("y", 14).attr("text-anchor", "middle")
+      .attr("font-size", 14.4).attr("font-weight", 700)
+      .text(`#${i + 1}: ${pr.p1} & ${pr.p2}`);
+    const cy = 74, r = 34, off = 19;
+    [[cw / 2 - off, pr.p1], [cw / 2 + off, pr.p2]].forEach(([cxp, party]) => {
+      g.append("circle").attr("cx", cxp).attr("cy", cy).attr("r", r)
+        .attr("fill", COLORS[party]).attr("fill-opacity", 0.4)
+        .attr("stroke", "#fff").attr("stroke-width", 1.5);
+    });
+    g.append("text").attr("x", cw / 2).attr("y", cy + 4).attr("text-anchor", "middle")
+      .attr("font-size", 14.4).attr("font-weight", 700).text(pct(pr.rate));
+    g.append("rect").attr("x", cw / 2 - off - r).attr("y", cy - r)
+      .attr("width", (off + r) * 2).attr("height", r * 2)
+      .attr("fill", "transparent").style("cursor", "pointer")
+      .on("mousemove", ev => showTip(ev,
+        `<b>${pr.p1} &amp; ${pr.p2}</b><br>` +
+        `einig bei ${pr.agreed} von ${pr.shared} gemeinsamen Abstimmungen (${pct1(pr.rate)})` +
+        `<br><span style="opacity:.7">klicken für die Liste</span>`))
+      .on("mouseout", hideTip)
+      .on("click", () => { hideTip(); showPairDetail(pr, polls, detail); });
+  });
+  const detail = el.append("div");
+}
+
+function showPairDetail(pr, polls, el) {
+  const majOf = (poll, party) => {
+    const pp = poll.parties.find(q => q.party === party);
+    if (!pp || pp.yes + pp.no + pp.abstain < 5) return null;
+    return d3.greatest([["yes", pp.yes], ["no", pp.no], ["abstain", pp.abstain]],
+                       d => d[1])[0];
+  };
+  const agree = [], differ = [];
+  polls.forEach(p => {
+    const a = majOf(p, pr.p1), b = majOf(p, pr.p2);
+    if (!a || !b) return;
+    (a === b ? agree : differ).push({ poll: p, a, b });
+  });
+
+  el.selectAll("*").remove();
+  const dot = pty => `<span class="party-dot" style="background:${COLORS[pty]}"></span>`;
+  el.append("div").attr("class", "hb-title")
+    .html(`${dot(pr.p1)}${pr.p1} &nbsp;vs&nbsp; ${dot(pr.p2)}${pr.p2}`);
+  el.append("div").attr("class", "hb-sub").html(
+    `Gemeinsame Abstimmungen: <b>${pr.shared}</b> · einig <b>${agree.length}</b> ` +
+    `(${pct1(pr.rate)}) · uneinig <b>${differ.length}</b>`);
+
+  const cols = el.append("div")
+    .style("display", "flex").style("gap", "18px").style("flex-wrap", "wrap");
+  const column = (title, items, cls) => {
+    const c = cols.append("div").style("flex", "1 1 320px").style("min-width", "0");
+    c.append("div").style("font-size", "13px").style("font-weight", "700")
+      .style("margin-bottom", "6px").text(`${title} (${items.length})`);
+    if (!items.length) { c.append("p").attr("class", "empty").text("keine"); return; }
+    const box = c.append("div").style("max-height", "300px").style("overflow-y", "auto");
+    items.slice(0, 40).forEach(it => {
+      box.append("div").attr("class", "poll-item")
+        .html(`<div class="d">${it.poll.date} · ${VOTE_LABELS[it.a]} / ${VOTE_LABELS[it.b]}</div>
+               <div class="t ${cls}">${it.poll.title_de}</div>`);
+    });
+    if (items.length > 40) {
+      c.append("p").attr("class", "cov-note").text(`+ ${items.length - 40} weitere`);
+    }
+  };
+  column("Einig (gleiche Mehrheit)", agree, "accepted");
+  column("Uneinig (andere Mehrheit)", differ, "rejected");
+}
+
+// ---- init --------------------------------------------------------------
+
+refreshList(true);
+renderPartei();
+</script>
+</body>
+</html>

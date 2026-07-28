@@ -1,0 +1,65 @@
+vote_date,milestone,source,vote_id,politician,party,vote
+1969-05-09,Partial decriminalization Paragraph 175 (1. StrRG),btvote,5014,Olaf Scholz,,not in Bundestag
+1969-05-09,Partial decriminalization Paragraph 175 (1. StrRG),btvote,5014,Angela Merkel,,not in Bundestag
+1969-05-09,Partial decriminalization Paragraph 175 (1. StrRG),btvote,5014,Friedrich Merz,,not in Bundestag
+1969-05-09,Partial decriminalization Paragraph 175 (1. StrRG),btvote,5014,Christian Lindner,,not in Bundestag
+1969-05-09,Partial decriminalization Paragraph 175 (1. StrRG),btvote,5014,Annalena Baerbock,,not in Bundestag
+1969-05-09,Partial decriminalization Paragraph 175 (1. StrRG),btvote,5014,Robert Habeck,,not in Bundestag
+1969-05-09,Partial decriminalization Paragraph 175 (1. StrRG),btvote,5014,Alice Weidel,,not in Bundestag
+1969-05-09,Partial decriminalization Paragraph 175 (1. StrRG),btvote,5014,Jens Spahn,,not in Bundestag
+1973-06-07,Sexual criminal law reform (4. StrRG),btvote,7003,Olaf Scholz,,not in Bundestag
+1973-06-07,Sexual criminal law reform (4. StrRG),btvote,7003,Angela Merkel,,not in Bundestag
+1973-06-07,Sexual criminal law reform (4. StrRG),btvote,7003,Friedrich Merz,,not in Bundestag
+1973-06-07,Sexual criminal law reform (4. StrRG),btvote,7003,Christian Lindner,,not in Bundestag
+1973-06-07,Sexual criminal law reform (4. StrRG),btvote,7003,Annalena Baerbock,,not in Bundestag
+1973-06-07,Sexual criminal law reform (4. StrRG),btvote,7003,Robert Habeck,,not in Bundestag
+1973-06-07,Sexual criminal law reform (4. StrRG),btvote,7003,Alice Weidel,,not in Bundestag
+1973-06-07,Sexual criminal law reform (4. StrRG),btvote,7003,Jens Spahn,,not in Bundestag
+2006-06-29,General Equal Treatment Act (AGG),btvote,16021,Olaf Scholz,SPD,yes
+2006-06-29,General Equal Treatment Act (AGG),btvote,16021,Angela Merkel,CDU/CSU,yes
+2006-06-29,General Equal Treatment Act (AGG),btvote,16021,Friedrich Merz,CDU/CSU,no
+2006-06-29,General Equal Treatment Act (AGG),btvote,16021,Christian Lindner,,not in Bundestag
+2006-06-29,General Equal Treatment Act (AGG),btvote,16021,Annalena Baerbock,,not in Bundestag
+2006-06-29,General Equal Treatment Act (AGG),btvote,16021,Robert Habeck,,not in Bundestag
+2006-06-29,General Equal Treatment Act (AGG),btvote,16021,Alice Weidel,,not in Bundestag
+2006-06-29,General Equal Treatment Act (AGG),btvote,16021,Jens Spahn,CDU/CSU,yes
+2012-06-28,Same-sex marriage motion (rejected),abgeordnetenwatch,929,Olaf Scholz,,not in Bundestag
+2012-06-28,Same-sex marriage motion (rejected),abgeordnetenwatch,929,Angela Merkel,CDU/CSU,no_show
+2012-06-28,Same-sex marriage motion (rejected),abgeordnetenwatch,929,Friedrich Merz,,not in Bundestag
+2012-06-28,Same-sex marriage motion (rejected),abgeordnetenwatch,929,Christian Lindner,FDP,no
+2012-06-28,Same-sex marriage motion (rejected),abgeordnetenwatch,929,Annalena Baerbock,,not in Bundestag
+2012-06-28,Same-sex marriage motion (rejected),abgeordnetenwatch,929,Robert Habeck,,not in Bundestag
+2012-06-28,Same-sex marriage motion (rejected),abgeordnetenwatch,929,Alice Weidel,,not in Bundestag
+2012-06-28,Same-sex marriage motion (rejected),abgeordnetenwatch,929,Jens Spahn,CDU/CSU,no
+2014-05-22,Successive adoption amendment (rejected),abgeordnetenwatch,1048,Olaf Scholz,,not in Bundestag
+2014-05-22,Successive adoption amendment (rejected),abgeordnetenwatch,1048,Angela Merkel,CDU/CSU,no_show
+2014-05-22,Successive adoption amendment (rejected),abgeordnetenwatch,1048,Friedrich Merz,,not in Bundestag
+2014-05-22,Successive adoption amendment (rejected),abgeordnetenwatch,1048,Christian Lindner,,not in Bundestag
+2014-05-22,Successive adoption amendment (rejected),abgeordnetenwatch,1048,Annalena Baerbock,DIE GRÜNEN,yes
+2014-05-22,Successive adoption amendment (rejected),abgeordnetenwatch,1048,Robert Habeck,,not in Bundestag
+2014-05-22,Successive adoption amendment (rejected),abgeordnetenwatch,1048,Alice Weidel,,not in Bundestag
+2014-05-22,Successive adoption amendment (rejected),abgeordnetenwatch,1048,Jens Spahn,CDU/CSU,no
+2017-06-30,Marriage for all (Ehe fuer alle),abgeordnetenwatch,1232,Olaf Scholz,,not in Bundestag
+2017-06-30,Marriage for all (Ehe fuer alle),abgeordnetenwatch,1232,Angela Merkel,CDU/CSU,no
+2017-06-30,Marriage for all (Ehe fuer alle),abgeordnetenwatch,1232,Friedrich Merz,,not in Bundestag
+2017-06-30,Marriage for all (Ehe fuer alle),abgeordnetenwatch,1232,Christian Lindner,,not in Bundestag
+2017-06-30,Marriage for all (Ehe fuer alle),abgeordnetenwatch,1232,Annalena Baerbock,DIE GRÜNEN,yes
+2017-06-30,Marriage for all (Ehe fuer alle),abgeordnetenwatch,1232,Robert Habeck,,not in Bundestag
+2017-06-30,Marriage for all (Ehe fuer alle),abgeordnetenwatch,1232,Alice Weidel,,not in Bundestag
+2017-06-30,Marriage for all (Ehe fuer alle),abgeordnetenwatch,1232,Jens Spahn,CDU/CSU,yes
+2021-05-19,TSG repeal / self-determination bill (rejected),abgeordnetenwatch,4146,Olaf Scholz,,not in Bundestag
+2021-05-19,TSG repeal / self-determination bill (rejected),abgeordnetenwatch,4146,Angela Merkel,CDU/CSU,no_show
+2021-05-19,TSG repeal / self-determination bill (rejected),abgeordnetenwatch,4146,Friedrich Merz,,not in Bundestag
+2021-05-19,TSG repeal / self-determination bill (rejected),abgeordnetenwatch,4146,Christian Lindner,FDP,abstain
+2021-05-19,TSG repeal / self-determination bill (rejected),abgeordnetenwatch,4146,Annalena Baerbock,DIE GRÜNEN,yes
+2021-05-19,TSG repeal / self-determination bill (rejected),abgeordnetenwatch,4146,Robert Habeck,,not in Bundestag
+2021-05-19,TSG repeal / self-determination bill (rejected),abgeordnetenwatch,4146,Alice Weidel,AfD,no_show
+2021-05-19,TSG repeal / self-determination bill (rejected),abgeordnetenwatch,4146,Jens Spahn,CDU/CSU,no
+2024-04-12,Self-Determination Act (SBGG),abgeordnetenwatch,5496,Olaf Scholz,SPD,no_show
+2024-04-12,Self-Determination Act (SBGG),abgeordnetenwatch,5496,Angela Merkel,,not in Bundestag
+2024-04-12,Self-Determination Act (SBGG),abgeordnetenwatch,5496,Friedrich Merz,CDU/CSU,no
+2024-04-12,Self-Determination Act (SBGG),abgeordnetenwatch,5496,Christian Lindner,FDP,no_show
+2024-04-12,Self-Determination Act (SBGG),abgeordnetenwatch,5496,Annalena Baerbock,BÜNDNIS 90/­DIE GRÜNEN,yes
+2024-04-12,Self-Determination Act (SBGG),abgeordnetenwatch,5496,Robert Habeck,BÜNDNIS 90/­DIE GRÜNEN,yes
+2024-04-12,Self-Determination Act (SBGG),abgeordnetenwatch,5496,Alice Weidel,AfD,no_show
+2024-04-12,Self-Determination Act (SBGG),abgeordnetenwatch,5496,Jens Spahn,CDU/CSU,no

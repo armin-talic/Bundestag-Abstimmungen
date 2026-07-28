@@ -1,0 +1,18 @@
+# working notes and reference screenshots, not part of the deliverable
+ideas/
+
+# Raw BTVote V2 download: the voting-behaviour file alone is 224 MB, over
+# GitHub's 100 MB per-file limit. Re-download it from Harvard Dataverse
+# (doi:10.7910/DVN/24U1FR, CC0); the extracted subset used by the project is
+# committed as data/btvote_votes_selected.csv.
+data/btvote/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# OS
+Thumbs.db
+.DS_Store
