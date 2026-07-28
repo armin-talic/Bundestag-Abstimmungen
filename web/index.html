@@ -119,9 +119,12 @@
   .hb-title { font-size: 15.6px; font-weight: 700; margin: 24px 0 2px; }
   .hb-sub { font-size: 14.4px; color: var(--muted); margin-bottom: 8px; }
   /* the two issue rankings always stay side by side (they only stack on
-     the narrow-screen breakpoint below) */
+     phones); compact type and capped width keep them small */
   .issue-row { display: flex; gap: 22px; flex-wrap: nowrap; }
   .issue-row > div { flex: 1 1 0; min-width: 0; }
+  .issue-row svg { max-width: 460px; }
+  .issue-row .hb-title { font-size: 12.5px; }
+  .issue-row .hb-sub { font-size: 11.5px; }
   /* reserve the same header height in both columns so the bars of the two
      charts start on exactly the same line even when one subtitle wraps */
   .issue-row .hb-title { min-height: 2.4em; margin-top: 24px; }
@@ -139,16 +142,6 @@
   .tooltip table { border-collapse: collapse; }
   .tooltip td { padding: 0; }
 
-  /* Below roughly a full-HD window the middle column is too narrow to carry
-     both rankings next to each other: each would fall to ~400px, which
-     scales their SVG text down to about 9px. They stack from here down so
-     each gets the full column width and stays readable. */
-  @media (max-width: 1700px) {
-    .issue-row { flex-wrap: wrap; }
-    .issue-row > div { flex: 1 1 100%; }
-    .issue-row .hb-title { min-height: 0; }
-    .issue-row .hb-sub { min-height: 0; }
-  }
   @media (max-width: 1300px) {
     aside { width: 210px; padding: 11px; }
     main { padding: 16px 18px 22px; }
@@ -180,9 +173,6 @@
       order: 4; margin: 0; padding: 12px 16px;
       background: #fff; border-top: 1px solid var(--border);
     }
-    /* only here do the two rankings stack */
-    .issue-row { flex-wrap: wrap; }
-    .issue-row > div { flex: 1 1 100%; }
     header { padding: 12px 14px 0; }
     header h1 { font-size: 26px; }
     .tabs { gap: 14px; flex-wrap: wrap; }
@@ -190,6 +180,11 @@
   @media (max-width: 560px) {
     header h1 { font-size: 21px; }
     .tabs button { font-size: 13px; padding: 7px 1px 8px; }
+    /* only on phones do the two rankings stack */
+    .issue-row { flex-wrap: wrap; }
+    .issue-row > div { flex: 1 1 100%; }
+    .issue-row .hb-title { min-height: 0; }
+    .issue-row .hb-sub { min-height: 0; }
   }
 </style>
 </head>
@@ -861,12 +856,14 @@ function hBarChart(container, cfg) {
   const svg = el.append("svg")
     .attr("viewBox", `0 0 ${W} ${Math.max(cfg.rows.length * (rowH + gap), 1)}`);
   const xMax = cfg.xMax ?? (d3.max(cfg.rows, r => r.value) || 1);
+  const baseFs = cfg.fontSize ?? 14.4;
+  const minFs = cfg.minFontSize ?? 9.5;
   // labels start hard against the left edge and use the full label column,
   // so a long Abstimmung title has the most room possible to fit in its rows
   const boxW = labelW - 12;
   cfg.rows.forEach((r, i) => {
     const y = i * (rowH + gap);
-    const fit = fitLabel(r.label, boxW, labelLines, 14.4, 9.5);
+    const fit = fitLabel(r.label, boxW, labelLines, baseFs, minFs);
     const lineH = fit.fontSize + 2.5;
     const startY = y + rowH / 2 + fit.fontSize / 3
                      - ((fit.lines.length - 1) * lineH) / 2;
@@ -881,7 +878,7 @@ function hBarChart(container, cfg) {
       .attr("width", w).attr("height", rowH).attr("fill", r.color);
     if (r.tip) rect.on("mousemove", ev => showTip(ev, r.tip)).on("mouseout", hideTip);
     const vt = svg.append("text").attr("x", labelW + w + 8).attr("y", y + rowH / 2 + 4)
-      .attr("font-size", 14.4).attr("font-weight", 700).text(r.valueLabel);
+      .attr("font-size", baseFs).attr("font-weight", 700).text(r.valueLabel);
     if (r.tip) vt.on("mousemove", ev => showTip(ev, r.tip)).on("mouseout", hideTip);
   });
 }
@@ -937,8 +934,9 @@ function drawIssueConsensus(polls) {
   const most = issueConsensusRows(polls, "most");
   const least = issueConsensusRows(polls, "least");
   // side by side, so each gets a narrower canvas
-  // wider label column so titles rarely need to shrink to fit their two rows
-  const common = { width: 660, labelW: 300, labelLines: 2, rowH: 46, valueW: 130 };
+  // compact: small font, thin bars, so both charts fit next to each other
+  const common = { width: 460, labelW: 210, labelLines: 2, rowH: 28, gap: 9,
+                   valueW: 82, fontSize: 11, minFontSize: 8 };
   if (most.length) {
     hBarChart("#chart-issues-most", {
       ...common,
