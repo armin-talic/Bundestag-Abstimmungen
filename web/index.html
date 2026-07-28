@@ -19,8 +19,13 @@
     margin: 0; color: #1a1a1a; background: #fafafa;
   }
   header { padding: 18px 26px 0; border-bottom: 1px solid var(--border); background: #fff; }
-  header h1 { margin: 0 0 3px; font-size: 38px; text-align: center; }
-  header p { margin: 0 0 10px; color: var(--muted); font-size: 13px; text-align: center; }
+  header h1 { margin: 0 0 10px; font-size: 38px; text-align: center; }
+  /* Quellenhinweis unten rechts, ausserhalb des Inhaltsflusses */
+  .data-note {
+    position: fixed; right: 10px; bottom: 7px; z-index: 5;
+    font-size: 11px; color: var(--muted); pointer-events: none;
+    background: rgba(250, 250, 250, .88); padding: 2px 7px; border-radius: 4px;
+  }
   .tabs { display: flex; gap: 26px; justify-content: center; }
   .tabs button {
     padding: 8px 2px 9px; font-size: 14px; border: none; background: none;
@@ -190,8 +195,7 @@
 </head>
 <body>
 <header>
-  <h1>Bundestag Abstimmungs</h1>
-  <p>Namentliche Abstimmungen · Einzelstimmen der Abgeordneten · Daten: abgeordnetenwatch.de API v2 (CC0)</p>
+  <h1 id="app-title">Bundestag Abstimmungs</h1>
   <nav class="tabs">
     <button id="tab-votes" class="active">Abstimmungen</button>
     <button id="tab-partei">Partei</button>
@@ -267,6 +271,7 @@
   </aside>
 </div>
 
+<div class="data-note">Daten: abgeordnetenwatch.de API v2 (CC0)</div>
 <div class="tooltip" id="tooltip"></div>
 
 <script>
@@ -316,6 +321,27 @@ function setTab(which) {
   document.getElementById("view-votes").hidden = which !== "votes";
   document.getElementById("view-partei").hidden = which !== "partei";
   hideTip();
+  updateHeaderTitle();
+}
+
+// The heading carries the period actually on screen, derived from the polls
+// the active tab's Wahlperiode filter leaves over - so "Alle Wahlperioden"
+// reads (2005-2026) and a single term narrows to its own span.
+function updateHeaderTitle() {
+  const onVotes = !document.getElementById("view-votes").hidden;
+  const polls = onVotes ? filteredPolls() : ptFilteredPolls();
+  let range = "";
+  if (polls.length) {
+    // Start = Beginn der fruehesten betroffenen Wahlperiode (die 16. WP
+    // konstituierte sich 2005, ihre erste namentliche Abstimmung faellt aber
+    // erst in den Mai 2006). Ende = juengste tatsaechliche Abstimmung.
+    const lo = Math.min(...polls.map(p => +p.legislature.replace(/\D/g, "").slice(0, 4)));
+    const hi = Math.max(...polls.map(p => p.year));
+    range = lo === hi ? ` (${lo})` : ` (${lo}-${hi})`;
+  }
+  const title = "Bundestag Abstimmungs" + range;
+  d3.select("#app-title").text(title);
+  document.title = title;
 }
 d3.select("#tab-votes").on("click", () => setTab("votes"));
 d3.select("#tab-partei").on("click", () => setTab("partei"));
@@ -324,7 +350,7 @@ d3.select("#tab-partei").on("click", () => setTab("partei"));
 
 const topics = [...new Set(DATA.polls.flatMap(p => p.topics))].sort();
 const legislatures = [...new Set(DATA.polls.map(p => p.legislature))].sort().reverse();
-const CURRENT_LEG = legislatures[0];
+const DEFAULT_LEG = "all";   // Startansicht: alle Wahlperioden
 const legLabel = l => l === "all" ? "Alle Wahlperioden" : l.replace("Bundestag ", "");
 const RESULT_OPTIONS = [
   { value: "all", label: "Alle Ergebnisse" },
@@ -425,12 +451,12 @@ function contrastText(hex) {
  *  ABSTIMMUNGEN                                                          *
  * ====================================================================== */
 
-const state = { legislature: CURRENT_LEG, topic: "all", result: "all",
+const state = { legislature: DEFAULT_LEG, topic: "all", result: "all",
                 pollId: "all", barMode: "total" };
 
 fillSelect("#leg-filter", ["all", ...legislatures], legLabel,
   v => { state.legislature = v; refreshList(true); });
-d3.select("#leg-filter").property("value", CURRENT_LEG);
+d3.select("#leg-filter").property("value", DEFAULT_LEG);
 
 fillSelect("#topic-filter", ["all", ...topics],
   d => d === "all" ? "Alle Themen" : d,
@@ -482,6 +508,7 @@ function refreshList(resetSelection) {
         <div class="d">${d.date} · ${d.topics.join(", ")}</div>
         <div class="t ${d.accepted ? "accepted" : "rejected"}">${d.title_de}</div>`);
   });
+  updateHeaderTitle();
   render();
 }
 
@@ -972,11 +999,11 @@ function drawIssueConsensus(polls) {
  *  PARTEI                                                                *
  * ====================================================================== */
 
-const ptState = { legislature: CURRENT_LEG, topic: "all", result: "all", pollId: "all" };
+const ptState = { legislature: DEFAULT_LEG, topic: "all", result: "all", pollId: "all" };
 
 fillSelect("#pt-leg", ["all", ...legislatures], legLabel,
   v => { ptState.legislature = v; renderPartei(); });
-d3.select("#pt-leg").property("value", CURRENT_LEG);
+d3.select("#pt-leg").property("value", DEFAULT_LEG);
 fillSelect("#pt-topic", ["all", ...topics],
   d => d === "all" ? "Alle Themen" : d,
   v => { ptState.topic = v; renderPartei(); });
@@ -1021,6 +1048,7 @@ function renderPartei() {
     ? null : basePolls.find(p => p.id === ptState.pollId);
   const polls = single ? [single] : basePolls;
 
+  updateHeaderTitle();   // vor dem moeglichen Early-Return unten
   d3.select("#pt-count").text(
     `${fmtN(polls.length)} Abstimmung${polls.length === 1 ? "" : "en"} ausgewertet`);
   d3.select("#pt-subtitle").text(single
