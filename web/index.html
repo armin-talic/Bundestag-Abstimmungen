@@ -138,8 +138,21 @@
   .tooltip table { border-collapse: collapse; }
   .tooltip td { padding: 0; }
 
-  @media (max-width: 1100px) {
-    #chart-seatmap svg, #chart-seatshare svg, #chart-bars svg { max-width: 100%; }
+  /* Below roughly a full-HD window the middle column is too narrow to carry
+     both rankings next to each other: each would fall to ~400px, which
+     scales their SVG text down to about 9px. They stack from here down so
+     each gets the full column width and stays readable. */
+  @media (max-width: 1700px) {
+    .issue-row { flex-wrap: wrap; }
+    .issue-row > div { flex: 1 1 100%; }
+    .issue-row .hb-title { min-height: 0; }
+    .issue-row .hb-sub { min-height: 0; }
+  }
+  @media (max-width: 1300px) {
+    aside { width: 210px; padding: 11px; }
+    main { padding: 16px 18px 22px; }
+    #chart-seatmap svg { max-width: 100%; }
+    #chart-seatshare svg, #chart-bars svg { max-width: 100%; }
   }
   @media (max-width: 900px) {
     .layout { flex-direction: column; }
